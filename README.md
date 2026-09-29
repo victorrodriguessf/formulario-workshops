@@ -152,6 +152,44 @@ A suíte não faz nenhuma cobrança real: a integração com o Mercado Pago é s
 - `docs/`: guia de deploy, decisões técnicas e histórico do projeto.
 - `tests/`: testes do fluxo público, painel, pagamentos, webhook e e-mails.
 
+## Licença, direitos autorais e uso da marca
+
+### Código-fonte: licença MIT
+
+O código deste projeto é distribuído sob a **[licença MIT](LICENSE)**. Você pode copiar, estudar, alterar, redistribuir e usar o código, inclusive em outros projetos e para fins comerciais, **desde que mantenha os créditos**:
+- conserve o aviso de copyright e o texto da licença em todas as cópias ou partes relevantes;
+- ao publicar uma versão derivada, cite a origem, por exemplo: "Baseado no sistema de inscrições do Armarinho Ponto a Ponto, desenvolvido por Victor Rodrigues da Silva Fonseca".
+
+O software é fornecido "como está", sem garantias. Quem o reutiliza é responsável pela própria instalação, configuração e operação.
+
+### Marca, logotipos e imagens: todos os direitos reservados
+
+A licença MIT **não** se aplica à identidade visual do Armarinho Ponto a Ponto. Os itens abaixo são protegidos pela Lei de Direitos Autorais ([Lei nº 9.610/1998](https://www.planalto.gov.br/ccivil_03/leis/l9610.htm)) e, no caso da marca, pela Lei da Propriedade Industrial ([Lei nº 9.279/1996](https://www.planalto.gov.br/ccivil_03/leis/l9279.htm)):
+
+- o nome "Armarinho Ponto a Ponto" e o slogan "Aonde as ideias criam formas!";
+- os logotipos (`public/images/logo.png`, `logo-fundobranco.png`, `logo-horizontal.png`);
+- as artes dos banners (`public/images/hero-banner*`) e as padronagens (`public/images/lateral-horizontal*.png`);
+- os textos e demais elementos visuais originais do site.
+
+Reproduzir, modificar ou usar esses itens, comercialmente ou não, depende de **autorização prévia e por escrito**, respeitadas as exceções previstas em lei, como a citação com indicação da fonte (art. 46 da Lei nº 9.610/1998). **Quem replicar o projeto deve trocar a marca e as imagens pelas suas próprias.**
+
+As fotos e artes das oficinas enviadas pelo painel ficam em `storage/app/public`, que não é versionado. Os direitos dessas imagens pertencem aos seus autores e parceiros.
+
+### Componentes de terceiros
+
+Cada componente de terceiros segue a sua própria licença:
+- **Laravel e as demais dependências PHP e JavaScript:** licenças próprias, a maioria MIT. Veja em `vendor/` e `node_modules/` depois da instalação.
+- **Fonte [Instrument Sans](https://github.com/Instrument/instrument-sans)** (em `public/fonts`): distribuída sob a [SIL Open Font License 1.1](https://openfontlicense.org), que permite uso e redistribuição mantendo o aviso de copyright e a licença da fonte.
+- **Mercado Pago, Pix e WhatsApp:** marcas dos seus respectivos titulares. O uso aqui é só de integração e referência.
+
+### Proteção de dados pessoais (LGPD)
+
+O sistema coleta nome, WhatsApp, e-mail e CPF de participantes, o que está sujeito à Lei Geral de Proteção de Dados ([Lei nº 13.709/2018](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)). Quem colocar uma cópia deste sistema no ar passa a ser o **controlador** desses dados e é responsável por:
+- informar a finalidade da coleta;
+- restringir o acesso ao painel e aos backups;
+- guardar os dados só pelo tempo necessário;
+- atender pedidos de acesso, correção e exclusão feitos pelos titulares.
+
 ## Pendências conhecidas
 
 - **Sessão expirada:** se a sessão do navegador expirar, o participante não consegue voltar à tela do Pix e precisa pedir ajuda à loja.
