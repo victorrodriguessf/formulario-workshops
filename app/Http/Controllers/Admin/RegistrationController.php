@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\PaymentAttempt;
 use App\Models\Registration;
 use App\Services\RegistrationMailer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -86,6 +88,26 @@ class RegistrationController extends Controller
         }
 
         return back()->with('success', 'Situação do pagamento atualizada.');
+    }
+
+    public function destroy(Registration $registration): RedirectResponse
+    {
+        DB::transaction(function () use ($registration): void {
+            PaymentAttempt::where('registration_id', $registration->id)->delete();
+            $registration->delete();
+        });
+
+        Log::info('Inscrição removida pelo painel administrativo.', [
+            'protocol' => $registration->protocol,
+            'event_id' => $registration->event_id,
+            'payment_method' => $registration->payment_method,
+            'payment_received' => $registration->payment_received,
+            'agreed_price_cents' => $registration->agreed_price_cents,
+            'admin_id' => auth()->id(),
+        ]);
+
+        return redirect()->route('admin.registrations.index')
+            ->with('success', "Inscrição {$registration->protocol} removida. A vaga foi liberada.");
     }
 
     public function export(Request $request): StreamedResponse

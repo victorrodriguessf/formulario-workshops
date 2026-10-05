@@ -36,6 +36,7 @@ Route::prefix('admin')->group(function () {
         Route::get('registrations/export', [RegistrationController::class, 'export'])->name('admin.registrations.export');
         Route::get('registrations/{registration}', [RegistrationController::class, 'show'])->name('admin.registrations.show');
         Route::patch('registrations/{registration}/payment', [RegistrationController::class, 'updatePayment'])->name('admin.registrations.payment.update');
+        Route::delete('registrations/{registration}', [RegistrationController::class, 'destroy'])->name('admin.registrations.destroy');
     });
 });
 

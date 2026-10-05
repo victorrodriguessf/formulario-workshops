@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\RegistrationConfirmed;
 use App\Models\Event;
+use App\Models\PaymentAttempt;
 use App\Models\Registration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -106,5 +107,48 @@ class AdminRegistrationControllerTest extends TestCase
             ->assertRedirect(route('admin.login'));
 
         $this->assertFalse($registration->refresh()->payment_received);
+    }
+
+    public function test_admin_removes_registration_and_frees_the_spot(): void
+    {
+        $event = Event::factory()->create(['capacity' => 1]);
+        $registration = Registration::factory()->create([
+            'event_id' => $event->id,
+            'participant_name' => 'Ana Costa',
+            'status' => 'confirmed',
+            'payment_received' => true,
+        ]);
+        $paymentAttempt = PaymentAttempt::create([
+            'registration_id' => $registration->id,
+            'idempotency_key' => 'remove-registration-payment',
+            'environment' => 'testing',
+            'amount_cents' => 8500,
+            'currency' => 'BRL',
+            'local_status' => 'paid',
+        ]);
+        $this->actingAs(User::factory()->create());
+        $this->assertFalse($event->hasAvailableSpots());
+
+        $this->get(route('admin.registrations.show', $registration))
+            ->assertSee('Remover inscrição')
+            ->assertSee('Esta ação não pode ser desfeita.');
+        $this->delete(route('admin.registrations.destroy', $registration))
+            ->assertRedirect(route('admin.registrations.index'))
+            ->assertSessionHas('success');
+
+        $this->assertModelMissing($paymentAttempt);
+        $this->assertModelMissing($registration);
+        $this->assertModelExists($event);
+        $this->assertTrue($event->refresh()->hasAvailableSpots());
+    }
+
+    public function test_guest_cannot_remove_registration(): void
+    {
+        $registration = Registration::factory()->create();
+
+        $this->delete(route('admin.registrations.destroy', $registration))
+            ->assertRedirect(route('admin.login'));
+
+        $this->assertModelExists($registration);
     }
 }
