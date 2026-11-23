@@ -4,6 +4,18 @@ Aplicação web para divulgar as oficinas presenciais do Armarinho Ponto a Ponto
 
 O fluxo foi pensado para celular e para pessoas com pouca familiaridade digital. O participante não cria conta: escolhe a oficina, informa seus dados, confere tudo e paga por **Pix** ou reserva para pagar **em dinheiro** na loja. A equipe usa um painel com login para cadastrar oficinas, acompanhar inscrições e confirmar pagamentos em dinheiro.
 
+## Projeto final da disciplina
+
+Este sistema é o case do projeto final de **Tópicos Avançados de Programação** (UNI-RN, 2026.2), de Victor Rodrigues da Silva Fonseca.
+
+| Documento | Conteúdo |
+|---|---|
+| [SPEC.md](SPEC.md) | Problema, público, escopo, regras de negócio e critérios de aceitação |
+| [AGENTS.md](AGENTS.md) | Como rodar, comandos, convenções e limites para agentes de IA |
+| [IA.md](IA.md) | O que foi pedido à IA, o que foi aceito, rejeitado e por quê |
+
+**Demonstração:** a apresentação usa um banco separado com dados fictícios (`php artisan db:seed --class=DemoSeeder`), com dois organizadores (`loja.demo` e `instrutora.demo`) para mostrar que cada um só enxerga as próprias oficinas.
+
 ## Funcionalidades
 
 **Site público**
@@ -15,8 +27,9 @@ O fluxo foi pensado para celular e para pessoas com pouca familiaridade digital.
 - E-mails de reserva (dinheiro) e de confirmação da inscrição.
 
 **Painel administrativo** (`/admin/login`, entrada com usuário e senha)
-- Cadastro, edição e exclusão de oficinas, com foto, local, materiais, vagas e prazos.
-- Lista de inscrições com busca, filtros e exportação em CSV compatível com o Excel.
+- Cada organizador tem login próprio e só vê e altera as **próprias** oficinas e as inscrições delas.
+- Cadastro, edição e exclusão de oficinas, com foto, local, materiais, vagas e prazos. Oficina com pagamento recebido não pode ser excluída, só cancelada ou pausada.
+- Lista de inscrições com busca, filtros, resumo (total, confirmadas, aguardando pagamento, valor arrecadado e vagas restantes) e exportação em CSV compatível com o Excel.
 - Confirmação manual de pagamentos **em dinheiro**. Pagamentos Pix são confirmados só pelo Mercado Pago.
 
 ## Tecnologias
@@ -56,6 +69,7 @@ php artisan admin:create
 - A senha precisa ter pelo menos 8 caracteres, com maiúscula, minúscula, número e símbolo.
 - O login é limitado a 5 tentativas por minuto.
 - Não existe administrador ou senha padrão no código.
+- Cada administrador é um **organizador**: as oficinas que ele cria pertencem a ele. Ao atualizar uma instalação antiga, a migration entrega as oficinas existentes ao primeiro administrador.
 
 ## Pagamentos (Mercado Pago)
 
@@ -131,6 +145,8 @@ Regras que o projeto segue:
 
 ## Testes e verificações
 
+Os testes rodam no GitHub Actions a cada push (`.github/workflows/tests.yml`), junto com a checagem de estilo do Pint.
+
 ```bash
 php artisan test --compact
 vendor/bin/pint --dirty --format agent
@@ -150,7 +166,9 @@ A suíte não faz nenhuma cobrança real: a integração com o Mercado Pago é s
 - `resources/views`: páginas públicas, painel e componentes.
 - `routes/web.php`: rotas públicas, administrativas e do Mercado Pago.
 - `docs/`: guia de deploy, decisões técnicas e histórico do projeto.
-- `tests/`: testes do fluxo público, painel, pagamentos, webhook e e-mails.
+- `app/Policies`: quem pode ver e alterar cada oficina e inscrição.
+- `database/seeders/DemoSeeder.php`: dados fictícios para demonstração.
+- `tests/`: testes do fluxo público, painel, regras de negócio, permissões, pagamentos, webhook e e-mails.
 
 ## Licença, direitos autorais e uso da marca
 

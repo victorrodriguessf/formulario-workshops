@@ -1,3 +1,50 @@
+# AGENTS.md · Inscrições em oficinas do Armarinho Ponto a Ponto
+
+Leia também `SPEC.md` (problema, regras de negócio e critérios de aceitação) antes de qualquer mudança.
+
+## Como rodar
+
+```bash
+composer install
+cp .env.example .env && php artisan key:generate
+touch database/database.sqlite && php artisan migrate
+php artisan db:seed --class=DemoSeeder   # dados fictícios para testar o painel
+npm ci && npm run build
+composer run dev
+```
+
+## Comandos
+
+| Para | Comando |
+|---|---|
+| Rodar os testes | `php artisan test --compact` |
+| Formatar o PHP | `vendor/bin/pint --dirty` |
+| Criar organizador | `php artisan admin:create` |
+| Dados de demonstração | `php artisan db:seed --class=DemoSeeder` |
+| Conferir Pix pendentes | `php artisan webhook:process` |
+| Expirar reservas em dinheiro | `php artisan registrations:expire-cash` |
+
+## Convenções do projeto
+
+- Toda regra de negócio vale na tela **e** no servidor. A tela ajuda; o servidor decide.
+- Toda consulta do painel é filtrada pelo organizador logado. Ações sobre uma oficina ou inscrição passam por `Gate::authorize` (Policies em `app/Policies`).
+- Mensagens para o usuário em português simples, sem jargão técnico.
+- Dinheiro em centavos (`price_cents`, `agreed_price_cents`), nunca em float.
+- Cada regra nova vem com teste em `tests/Feature`. Testes usam o gateway de pagamento simulado (`PAYMENT_GATEWAY=fake`).
+- Commits pequenos, com mensagem que explica o porquê.
+
+## O que o agente NÃO pode fazer
+
+- Ler, criar ou alterar `.env` ou qualquer arquivo com credenciais. Não colocar tokens, senhas ou chaves no código.
+- Rodar comandos contra o banco de produção, fazer deploy ou acessar a Hostinger.
+- Usar credenciais de produção do Mercado Pago, criar cobranças reais ou mudar o webhook.
+- Apagar migrations existentes ou alterar uma migration já aplicada. Mudança de banco é sempre migration nova.
+- Remover ou enfraquecer um teste para fazê-lo passar.
+- Mudar dependências (`composer.json`, `package.json`) sem pedir.
+- Parar e perguntar antes de: apagar arquivos, mudar o schema, mexer no fluxo de pagamento ou nas Policies.
+
+---
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
