@@ -11,6 +11,9 @@
     @if(session('success'))
         <div class="alert alert-success" role="status">{{ session('success') }}</div>
     @endif
+    @error('event')
+        <div class="alert alert-error" role="alert">{{ $message }}</div>
+    @enderror
 
     <div class="stat-strip">
         <div><strong>{{ $events->total() }}</strong><span>Oficinas no total</span></div>
@@ -31,6 +34,9 @@
                         @if($event->capacity)
                             <span class="dot">·</span> {{ $event->occupied_registrations_count }}/{{ $event->capacity }} vagas ocupadas
                         @endif
+                        @if($event->paid_registrations_count > 0)
+                            <span class="dot">·</span> {{ $event->paid_registrations_count }} {{ $event->paid_registrations_count === 1 ? 'pagamento recebido' : 'pagamentos recebidos' }}
+                        @endif
                     </p>
                 </div>
                 <div class="row-actions">
@@ -38,7 +44,11 @@
                         <a class="text-link" href="{{ route('events.show', $event->id) }}" target="_blank" rel="noopener">Ver página ↗</a>
                     @endif
                     <a class="btn btn-secondary" href="{{ route('admin.events.edit', $event) }}">Editar</a>
-                    <form action="{{ route('admin.events.destroy', $event) }}" method="POST" data-progress-form data-confirm="Tem certeza? O curso, suas inscrições e os históricos de pagamento serão excluídos permanentemente. Esta ação não pode ser desfeita.">@csrf @method('DELETE')<button class="btn btn-danger" type="submit" data-submit-label="Excluindo…">Excluir curso</button></form>
+                    @if($event->paid_registrations_count > 0)
+                        <span class="row-hint">Tem pagamentos recebidos: para encerrar, cancele ou pause a oficina.</span>
+                    @else
+                        <form action="{{ route('admin.events.destroy', $event) }}" method="POST" data-progress-form data-confirm="Tem certeza? O curso, suas inscrições e os históricos de pagamento serão excluídos permanentemente. Esta ação não pode ser desfeita.">@csrf @method('DELETE')<button class="btn btn-danger" type="submit" data-submit-label="Excluindo…">Excluir curso</button></form>
+                    @endif
                 </div>
             </article>
         @empty

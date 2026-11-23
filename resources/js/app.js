@@ -20,6 +20,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Regras de negócio também na tela: o servidor confere de novo ao salvar.
+    document.querySelectorAll('[data-max-from]').forEach((input) => {
+        const source = document.getElementById(input.dataset.maxFrom);
+        if (!source) return;
+        const sync = () => {
+            input.max = source.value || '';
+            const tooLate = source.value && input.value && input.value > source.value;
+            input.setCustomValidity(tooLate ? input.dataset.maxMessage : '');
+        };
+        source.addEventListener('input', sync);
+        input.addEventListener('input', sync);
+        sync();
+    });
+
+    document.querySelectorAll('[data-min-message]').forEach((input) => {
+        const check = () => {
+            input.setCustomValidity('');
+            if (input.validity.rangeUnderflow) input.setCustomValidity(input.dataset.minMessage);
+        };
+        input.addEventListener('input', check);
+        check();
+    });
+
     document.querySelectorAll('[data-progress-form]').forEach((form) => {
         const submit = form.querySelector('[type="submit"]');
         if (submit) submit.dataset.originalLabel = submit.textContent;
