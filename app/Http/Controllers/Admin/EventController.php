@@ -8,6 +8,7 @@ use App\Models\PaymentAttempt;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -16,10 +17,13 @@ use Throwable;
 
 class EventController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         return view('admin.events.index', [
-            'events' => Event::withCount('occupiedRegistrations')->latest()->paginate(10),
+            'events' => $request->user()->events()
+                ->withCount(['occupiedRegistrations', 'paidRegistrations'])
+                ->latest()
+                ->paginate(10),
         ]);
     }
 
@@ -39,7 +43,7 @@ class EventController extends Controller
         }
 
         try {
-            Event::create($validated);
+            $request->user()->events()->create($validated);
         } catch (Throwable $exception) {
             if ($bannerPath) {
                 Storage::disk('public')->delete($bannerPath);
@@ -53,12 +57,16 @@ class EventController extends Controller
 
     public function edit(Event $event): View
     {
+        Gate::authorize('update', $event);
+        $event->loadCount('occupiedRegistrations');
+
         return view('admin.events.edit', compact('event'));
     }
 
     public function update(Request $request, Event $event): RedirectResponse
     {
-        $validated = $this->validatedEvent($request);
+        Gate::authorize('update', $event);
+        $validated = $this->validatedEvent($request, $event);
         $removeBanner = $request->boolean('remove_banner');
 
         if ($removeBanner && $request->hasFile('banner_image')) {
@@ -96,6 +104,13 @@ class EventController extends Controller
 
     public function destroy(Event $event): RedirectResponse
     {
+        Gate::authorize('delete', $event);
+
+        if ($event->paidRegistrations()->exists()) {
+            return redirect()->route('admin.events.index')
+                ->withErrors(['event' => 'Esta oficina tem inscrições pagas. Desative-a (cancele ou pause) em vez de excluir.']);
+        }
+
         $bannerPath = $event->banner_path;
 
         DB::transaction(function () use ($event): void {
@@ -116,7 +131,7 @@ class EventController extends Controller
         return redirect()->route('admin.events.index')->with('success', 'Curso removido permanentemente.');
     }
 
-    private function validatedEvent(Request $request): array
+    private function validatedEvent(Request $request, ?Event $event = null): array
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -148,6 +163,8 @@ class EventController extends Controller
             'cash_payment_deadline.date' => 'Informe uma data e um horário válidos para o pagamento em dinheiro.',
         ]);
 
+        $this->ensureBusinessRules($validated, $event);
+
         $price = str_replace(',', '.', $validated['price_reais']);
         [$reais, $centavos] = array_pad(explode('.', $price, 2), 2, '0');
         $validated['price_cents'] = ((int) $reais * 100) + (int) str_pad($centavos, 2, '0');
@@ -158,6 +175,31 @@ class EventController extends Controller
         $validated['is_paused'] = $request->boolean('is_paused');
 
         return $validated;
+    }
+
+    /**
+     * Regras que dependem de mais de um campo ou do estado atual da oficina.
+     */
+    private function ensureBusinessRules(array $validated, ?Event $event): void
+    {
+        $errors = [];
+
+        if (! empty($validated['registrations_close_at']) && ! empty($validated['starts_at'])
+            && strtotime($validated['registrations_close_at']) > strtotime($validated['starts_at'])) {
+            $errors['registrations_close_at'] = 'As inscrições devem encerrar até o início da oficina.';
+        }
+
+        if ($event && ! empty($validated['capacity'])) {
+            $activeRegistrations = $event->occupiedRegistrations()->count();
+
+            if ((int) $validated['capacity'] < $activeRegistrations) {
+                $errors['capacity'] = "O limite não pode ser menor que as {$activeRegistrations} inscrições ativas desta oficina.";
+            }
+        }
+
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     private function storeBanner(Request $request): ?string

@@ -164,8 +164,9 @@ class AdminEventControllerTest extends TestCase
 
     public function test_existing_image_link_is_kept_when_admin_edits_without_new_upload(): void
     {
-        $this->actingAs(User::factory()->create());
-        $event = Event::factory()->create([
+        $organizer = User::factory()->create();
+        $this->actingAs($organizer);
+        $event = Event::factory()->for($organizer)->create([
             'banner_path' => 'https://example.com/oficina.jpg',
         ]);
 
@@ -195,7 +196,7 @@ class AdminEventControllerTest extends TestCase
             'currency' => 'BRL',
             'local_status' => 'pending',
         ]);
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($event->user);
 
         $this->get(route('admin.events.index'))
             ->assertSee('Excluir curso')

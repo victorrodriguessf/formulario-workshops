@@ -17,11 +17,12 @@ class AdminRegistrationControllerTest extends TestCase
 
     public function test_admin_filters_participants_by_course_and_status(): void
     {
-        $firstEvent = Event::factory()->create(['title' => 'Bordado']);
-        $secondEvent = Event::factory()->create(['title' => 'Crochê']);
+        $organizer = User::factory()->create();
+        $firstEvent = Event::factory()->for($organizer)->create(['title' => 'Bordado']);
+        $secondEvent = Event::factory()->for($organizer)->create(['title' => 'Crochê']);
         Registration::factory()->create(['event_id' => $firstEvent->id, 'participant_name' => 'Ana Costa', 'status' => 'confirmed']);
         Registration::factory()->create(['event_id' => $secondEvent->id, 'participant_name' => 'Beatriz Lima', 'status' => 'awaiting_payment']);
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($organizer);
 
         $this->get(route('admin.registrations.index', ['event_id' => $firstEvent->id, 'status' => 'confirmed']))
             ->assertSee('Ana Costa')
@@ -31,7 +32,7 @@ class AdminRegistrationControllerTest extends TestCase
     public function test_admin_can_open_participant_details(): void
     {
         $registration = Registration::factory()->create(['participant_name' => 'Ana Costa']);
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($registration->event->user);
 
         $this->get(route('admin.registrations.show', $registration))
             ->assertSee('Ana Costa')
@@ -43,7 +44,7 @@ class AdminRegistrationControllerTest extends TestCase
     {
         Mail::fake();
         $registration = Registration::factory()->create(['payment_method' => 'cash']);
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($registration->event->user);
 
         $this->patch(route('admin.registrations.payment.update', $registration), ['payment_received' => '1'])
             ->assertRedirect();
@@ -66,7 +67,7 @@ class AdminRegistrationControllerTest extends TestCase
     public function test_admin_cannot_manually_change_a_pix_payment(): void
     {
         $registration = Registration::factory()->create(['payment_method' => 'pix']);
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($registration->event->user);
 
         $this->from(route('admin.registrations.show', $registration))
             ->patch(route('admin.registrations.payment.update', $registration), ['payment_received' => '1'])
@@ -87,7 +88,7 @@ class AdminRegistrationControllerTest extends TestCase
             'status' => 'expired',
             'cash_payment_due_at' => now()->subMinute(),
         ]);
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($registration->event->user);
 
         $this->patch(route('admin.registrations.payment.update', $registration), ['payment_received' => '1'])
             ->assertSessionHasErrors('payment_received');
@@ -126,7 +127,7 @@ class AdminRegistrationControllerTest extends TestCase
             'currency' => 'BRL',
             'local_status' => 'paid',
         ]);
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($event->user);
         $this->assertFalse($event->hasAvailableSpots());
 
         $this->get(route('admin.registrations.show', $registration))

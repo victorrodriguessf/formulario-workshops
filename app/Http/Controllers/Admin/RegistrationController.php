@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Event;
 use App\Models\PaymentAttempt;
 use App\Models\Registration;
 use App\Services\RegistrationMailer;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -22,20 +23,51 @@ class RegistrationController extends Controller
 
     public function index(Request $request): View
     {
+        $events = $request->user()->events()
+            ->withCount('occupiedRegistrations')
+            ->orderBy('title')
+            ->get();
+
         return view('admin.registrations.index', [
             'registrations' => $this->filtered($request)->paginate(20)->withQueryString(),
-            'events' => Event::orderBy('title')->get(['id', 'title']),
+            'events' => $events,
             'search' => $request->input('search', ''),
-            'counts' => [
-                'confirmed' => Registration::where('status', 'confirmed')->count(),
-                'awaiting_payment' => Registration::where('status', 'awaiting_payment')->count(),
-                'other' => Registration::whereNotIn('status', ['confirmed', 'awaiting_payment'])->count(),
-            ],
+            'summary' => $this->summary($request, $events),
         ]);
+    }
+
+    /**
+     * Totais que acompanham a busca e a oficina escolhidas (a situação não entra,
+     * para que os números por situação continuem comparáveis entre si).
+     */
+    private function summary(Request $request, Collection $events): array
+    {
+        $base = $this->filtered($request, withStatus: false)->reorder()->setEagerLoads([]);
+
+        $byStatus = (clone $base)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $selectedEvent = $request->filled('event_id')
+            ? $events->firstWhere('id', $request->input('event_id'))
+            : null;
+
+        return [
+            'total' => (int) $byStatus->sum(),
+            'confirmed' => (int) ($byStatus['confirmed'] ?? 0),
+            'awaiting_payment' => (int) ($byStatus['awaiting_payment'] ?? 0),
+            'other' => (int) $byStatus->except(['confirmed', 'awaiting_payment'])->sum(),
+            'revenue_cents' => (int) (clone $base)->where('payment_received', true)->sum('agreed_price_cents'),
+            'spots_left' => $selectedEvent?->capacity !== null
+                ? max(0, $selectedEvent->capacity - $selectedEvent->occupied_registrations_count)
+                : null,
+        ];
     }
 
     public function show(Registration $registration): View
     {
+        Gate::authorize('view', $registration);
         $registration->load(['event', 'paymentAttempts']);
 
         return view('admin.registrations.show', compact('registration'));
@@ -43,6 +75,7 @@ class RegistrationController extends Controller
 
     public function updatePayment(Request $request, Registration $registration): RedirectResponse
     {
+        Gate::authorize('update', $registration);
         $validated = $request->validate([
             'payment_received' => ['required', 'boolean'],
         ]);
@@ -92,6 +125,7 @@ class RegistrationController extends Controller
 
     public function destroy(Registration $registration): RedirectResponse
     {
+        Gate::authorize('delete', $registration);
         DB::transaction(function () use ($registration): void {
             PaymentAttempt::where('registration_id', $registration->id)->delete();
             $registration->delete();
@@ -137,9 +171,11 @@ class RegistrationController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    private function filtered(Request $request): Builder
+    private function filtered(Request $request, bool $withStatus = true): Builder
     {
-        $query = Registration::with('event')->latest();
+        $query = Registration::with('event')
+            ->whereHas('event', fn (Builder $event) => $event->where('user_id', $request->user()->id))
+            ->latest();
         $search = $request->input('search');
         $search = is_string($search) ? trim($search) : '';
         if ($search !== '') {
@@ -152,7 +188,7 @@ class RegistrationController extends Controller
         if ($request->filled('event_id')) {
             $query->where('event_id', $request->input('event_id'));
         }
-        if (in_array($request->input('status'), ['confirmed', 'awaiting_payment', 'cancelled', 'expired', 'review_required'], true)) {
+        if ($withStatus && in_array($request->input('status'), ['confirmed', 'awaiting_payment', 'cancelled', 'expired', 'review_required'], true)) {
             $query->where('status', $request->input('status'));
         }
 
